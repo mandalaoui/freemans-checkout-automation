@@ -1,0 +1,1 @@
+# freemans-checkout-automation
