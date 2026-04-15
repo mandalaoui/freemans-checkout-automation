@@ -3,10 +3,10 @@ import puppeteer from "puppeteer";
 export async function launchBrowser() {
   const browser = await puppeteer.launch({
     headless: false,
-    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   });
 
   const page = await browser.newPage();
+  await page.setViewport({ width: 1600, height: 1000 });
 
   return { browser, page };
 }

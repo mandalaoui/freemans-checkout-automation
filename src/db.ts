@@ -3,36 +3,55 @@ import { open, Database } from "sqlite";
 import path from "path";
 import { FormField } from "./types";
 
+let dbInstance: Database | null = null;
+
 export async function initDb(): Promise<Database> {
-  const db = await open({
+  if (dbInstance) return dbInstance;
+
+  dbInstance = await open({
     filename: path.join(__dirname, "..", "database", "form_selectors.sqlite"),
     driver: sqlite3.Database,
   });
 
-  await db.exec(`
+  await dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS form_fields (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      field_name TEXT NOT NULL,
+      field_name TEXT NOT NULL UNIQUE,
       selector TEXT NOT NULL,
-      property TEXT NOT NULL,
-      value TEXT NOT NULL
+      action TEXT CHECK(action IN ('type', 'click', 'select')) NOT NULL,
+      value TEXT
     );
   `);
 
-  return db;
+  return dbInstance;
 }
 
-export async function insertFormFields(db: Database, fields: FormField[]) {
+export async function insertFormFields(fields: FormField[]) {
+  const db = await initDb();
   for (const field of fields) {
     await db.run(
-      `
-      INSERT INTO form_fields (field_name, selector, property, value)
-      VALUES (?, ?, ?, ?)
-      `,
+      `INSERT INTO form_fields (field_name, selector, action, value)
+       VALUES (?, ?, ?, ?)`,
       field.fieldName,
       field.selector,
-      field.property,
-      field.value
+      field.action,
+      field.value ?? null
     );
   }
+}
+
+export async function clearFormFields() {
+  const db = await initDb();
+
+  await db.exec("DELETE FROM form_fields");
+}
+
+export async function getFormFields(): Promise<FormField[]> {
+  const db = await initDb();
+
+  return db.all(`
+    SELECT field_name as fieldName, selector, action, value
+    FROM form_fields
+    ORDER BY id
+  `);
 }
