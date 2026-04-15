@@ -79,25 +79,28 @@ export const formFields: FormField[] = [
     action: "type",
     value: "Test1234!",
   },
+  {
+    fieldName: "cardName",
+    selector: "#CardHolderName",
+    action: "type",
+    value: "Steve Rosenblum",
+  },
+  {
+    fieldName: "cardNumber",
+    selector: "#CardNumber",
+    action: "type",
+    value: "4111111111111111",
+  },
+  {
+    fieldName: "expiry",
+    selector: "#ExpiryDateMonthYear",
+    action: "type",
+    value: "12/30",
+  },
+  {
+    fieldName: "cvv",
+    selector: "#CardSecurityCode",
+    action: "type",
+    value: "123",
+  }
 ];
-
-// export const formSelectors = {
-//   title: "#Title",
-//   firstName: "#FirstName",
-//   lastName: "#LastName",
-
-//   day: "#dob_day",
-//   month: "#dob_month",
-//   year: "#dob_year",
-
-//   phone: "#DayTimeTelephone",
-
-//   house: "#houseId",
-//   postcode: "#postCode",
-
-//   email: "#Email",
-//   confirmEmail: "#ConfirmEmail",
-
-//   password: "#Password",
-//   confirmPassword: "#confirmPassword",
-// };

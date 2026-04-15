@@ -16,7 +16,7 @@ export async function initDb(): Promise<Database> {
   await dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS form_fields (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      field_name TEXT NOT NULL UNIQUE,
+      field_name TEXT NOT NULL,
       selector TEXT NOT NULL,
       action TEXT CHECK(action IN ('type', 'click', 'select')) NOT NULL,
       value TEXT

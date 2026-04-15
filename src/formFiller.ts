@@ -1,9 +1,11 @@
 import { Page } from "puppeteer";
-import { initDb, getFormFields } from "./db";
+import { getFormFields } from "./db";
 import { typeText, selectDropdown, clickElement } from "./actions";
 import { FormField } from "./types";
 import { selectors } from "./selectors";
+import { retry } from "./utils";
 
+// Identify dropdown fields (supports common patterns for day/month/year/...)
 function isDropdown(fieldName: string, selector: string) {
   return (
     fieldName === "title" ||
@@ -14,36 +16,81 @@ function isDropdown(fieldName: string, selector: string) {
   );
 }
 
-async function fillFields(page: Page, fields: FormField[]) {
+function normalizeValue(fieldName: string, value: string) {
+  if (fieldName === "cardNumber") {
+    return value.replace(/\s+/g, "");
+  }
+  return value.trim();
+}
+
+// Fills provided form fields, using actions from ./actions (typeText, selectDropdown, clickElement) with added logs
+export async function fillFields(page: Page, fields: FormField[]) {
   for (const field of fields) {
     const { fieldName, selector, action, value } = field;
 
+    console.log(`🔎 Waiting for selector "${selector}" (field: "${fieldName}", action: "${action}")`);
     await page.waitForSelector(selector, { visible: true, timeout: 10000 });
 
     if (action === "select" || isDropdown(fieldName, selector)) {
-      if (typeof value === "string") {
-        await selectDropdown(page, selector, value);
-      } else {
-        throw new Error(
-          `Field "${fieldName}" with action "select" or dropdown requires a string value.`
-        );
+      if (typeof value !== "string") {
+        throw new Error(`Field "${fieldName}" requires string value`);
+      }
+
+      const normValue = normalizeValue(fieldName, value);
+
+      console.log(`⬇️  Selecting value "${normValue}" in dropdown "${fieldName}" (${selector})`);
+      await retry(() => selectDropdown(page, selector, normValue));
+
+      // Ensure the dropdown value is set correctly
+      const actual = await page.$eval(
+        selector,
+        el => (el as HTMLSelectElement).value
+      );
+      console.log(`✅ Dropdown "${fieldName}" expected: "${normValue}", actual: "${actual}"`);
+
+      if (actual !== normValue) {
+        console.error(`❌ Dropdown ${fieldName} not selected correctly (expected: "${normValue}", actual: "${actual}")`);
+        throw new Error(`Dropdown ${fieldName} not selected correctly`);
       }
     } else if (action === "type") {
-      if (typeof value === "string") {
-        await typeText(page, selector, value);
-      } else {
-        throw new Error(
-          `Field "${fieldName}" with action "type" requires a string value.`
+      if (typeof value !== "string") {
+        throw new Error(`Field "${fieldName}" requires string value`);
+      }
+
+      const normValue = normalizeValue(fieldName, value);
+
+      console.log(`⌨️  Typing value "${normValue}" into "${fieldName}" (${selector})`);
+      await retry(() => typeText(page, selector, normValue));
+
+      // Ensure the input value is set correctly
+      const actual = await page.$eval(
+        selector,
+        el => (el as HTMLInputElement).value
+      );
+      console.log(`✅ Input "${fieldName}" expected: "${normValue}", actual: "${actual}"`);
+
+      const normActual = normalizeValue(fieldName, actual);
+      const normExpected = normalizeValue(fieldName, value);
+      console.log(`🔍 Normalized compare → expected: "${normExpected}", actual: "${normActual}"`);
+
+
+      if (!actual || normActual !== normExpected) {
+        console.error(
+          `❌ Field ${fieldName} not filled correctly (expected: "${value}", actual: "${actual}")`
         );
+        throw new Error(`Field ${fieldName} not filled correctly`);
       }
     } else if (action === "click") {
-      await clickElement(page, selector);
+      console.log(`🖱️  Clicking element for "${fieldName}" (${selector})`);
+      await retry(() => clickElement(page, selector));
+      console.log(`✅ Clicked "${fieldName}"`);
+    } else {
+      console.warn(`⚠️  Unknown action "${action}" for field "${fieldName}"`);
     }
-
-    console.log(`Filled field: ${fieldName} -> ${selector}`);
   }
 }
 
+// Fill the initial address/customer details form
 export async function fillInitialAddressForm(page: Page) {
   const allFields: FormField[] = await getFormFields();
   const initialFields = allFields.filter(f =>
@@ -61,25 +108,52 @@ export async function fillInitialAddressForm(page: Page) {
   );
 
   await fillFields(page, initialFields);
-  console.log("Initial address form filled");
+
+  // Ensure no visible errors after filling
+  const visibleErrors = await page.$$eval(".error", els =>
+    els
+      .filter(el => {
+        const style = window.getComputedStyle(el);
+        return (
+          style.display !== "none" &&
+          style.visibility !== "hidden" &&
+          style.opacity !== "0" &&
+          el.textContent?.trim()
+        );
+      })
+      .map(el => el.textContent!.trim())
+  );
+  if (visibleErrors.length > 0) {
+    console.error("❌ Visible form errors:", visibleErrors);
+    throw new Error(`Form errors found: ${visibleErrors.join(", ")}`);
+  }
 }
 
+// Click the "Find Address" button, check results are loaded
 export async function clickFindAddress(page: Page) {
   await page.waitForSelector(selectors.findAddressButton, {
     visible: true,
     timeout: 10000,
   });
 
-  await page.click(selectors.findAddressButton);
+  await retry(() => clickElement(page, selectors.findAddressButton));
 
   await page.waitForSelector(selectors.addressSelect, {
     visible: true,
     timeout: 10000,
   });
 
-  console.log("Find Address clicked and address list appeared");
+  const optionsCount = await page.$$eval(
+    `${selectors.addressSelect} option`,
+    opts => opts.length
+  );
+
+  if (optionsCount === 0) {
+    throw new Error("No address options loaded");
+  }
 }
 
+// Select the first valid address from the loaded dropdown results
 export async function selectAddressFromResults(page: Page) {
   await page.waitForSelector(selectors.addressSelect, {
     visible: true,
@@ -98,34 +172,52 @@ export async function selectAddressFromResults(page: Page) {
 
   const valueToSelect = options[0];
 
-  await page.select(selectors.addressSelect, valueToSelect);
+  await retry(() => selectDropdown(page, selectors.addressSelect, valueToSelect));
 
-  console.log(`Selected address: ${valueToSelect}`);
+  const actual = await page.$eval(
+    selectors.addressSelect,
+    el => (el as HTMLSelectElement).value
+  );
+
+  if (actual !== valueToSelect) {
+    throw new Error("Address not selected properly");
+  }
 
   await page.waitForSelector(selectors.email, {
     visible: true,
     timeout: 15000,
   });
-
-  console.log("Address confirmed, next form revealed");
 }
 
+// Fill post-address form fields (email, password, etc.)
 export async function fillPostAddressForm(page: Page) {
   const allFields: FormField[] = await getFormFields();
-  const postFields = allFields.filter(f =>
-    [
-      "email",
-      "confirmEmail",
-      "password",
-      "confirmPassword",
-    ].includes(f.fieldName)
-  );
+  const fieldNames = ["email", "confirmEmail", "password", "confirmPassword"];
+  const postFields = allFields.filter(f => fieldNames.includes(f.fieldName));
+
+  // Compare values for confirmEmail/email and confirmPassword/password
+  const emailField = postFields.find(f => f.fieldName === "email");
+  const confirmEmailField = postFields.find(f => f.fieldName === "confirmEmail");
+  const passwordField = postFields.find(f => f.fieldName === "password");
+  const confirmPasswordField = postFields.find(f => f.fieldName === "confirmPassword");
+
+  if (emailField && confirmEmailField && emailField.value !== confirmEmailField.value) {
+    throw new Error("Email and Confirm Email values do not match");
+  }
+  if (passwordField && confirmPasswordField && passwordField.value !== confirmPasswordField.value) {
+    throw new Error("Password and Confirm Password values do not match");
+  }
 
   await fillFields(page, postFields);
-  console.log("Post-address form filled");
 }
 
+// Click the "Continue" or "Apply" button and wait for next page/container
 export async function clickContinue(page: Page) {
-  await clickElement(page, selectors.applyButton);
-  console.log("Continue clicked");
+  await page.waitForSelector(selectors.applyButton, { visible: true });
+
+  await retry(() => clickElement(page, selectors.applyButton));
+
+  await page.waitForSelector(selectors.deliveryContainerWrapper, {
+    timeout: 15000,
+  });
 }

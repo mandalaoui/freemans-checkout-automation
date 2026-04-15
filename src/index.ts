@@ -1,70 +1,25 @@
 import { launchBrowser } from "./browser";
-import { goToHomepage,
-  goToProduct,
-  acceptCookies,
-  selectSize,
-  addToBag,
-  goToBag,
-  selectColor,
-  goToCheckout,
-  goToGuestCheckout,
-  continueDelivery,
-  choosePayNow,
-  fillCardDetails,
-  purchaseAvailable,
-  assertBagHasItems
-} from "./navigation";
-import {
-  fillInitialAddressForm,
-  fillPostAddressForm,
-  clickContinue,
-  clickFindAddress,
-  selectAddressFromResults,
-} from "./formFiller";
-
-
+import { runHappyFlow } from "./flows/happyFlow";
+import { runNegativeFlows } from "./flows/negativeFlows";
 
 async function run() {
   const { browser, page } = await launchBrowser();
-  const productUrl = "https://www.freemans.com/products/bonprix-stripe-short-sleeve-blouse/_/A-913221_8";
-
   try {
-    // home
-    await goToHomepage(page);
-    await acceptCookies(page);
-    await goToProduct(page, productUrl);
+    console.log("\n🚀 RUNNING HAPPY FLOW\n");
 
-    // product
-    await selectColor(page);
-    await selectSize(page);
-    await addToBag(page);
+    await runHappyFlow(page);
 
-    // bag
-    await assertBagHasItems(page);
-    await goToBag(page);
-    
-    // checkout
-    await goToCheckout(page);
-    await goToGuestCheckout(page);
+    // await page.close();
+    console.log("\n✅ HAPPY FLOW PASSED\n");
 
-    // register
-    await fillInitialAddressForm(page);
-    await clickFindAddress(page);
-    await selectAddressFromResults(page);
-    await fillPostAddressForm(page);
-    await clickContinue(page);
+    // console.log("\n🚀 RUNNING NEGATIVE FLOWS\n");
+    // await runNegativeFlows(browser);
+    // console.log("\n🎉 ALL TESTS PASSED");
 
-    // delivery
-    await continueDelivery(page);
+  } catch (err: any) {
+    console.error("\n💥 TEST FAILED");
+    console.error("ERROR:", err.message);
 
-    // payment
-    await choosePayNow(page);
-    await fillCardDetails(page);
-    await purchaseAvailable(page);
-
-    console.log("Flow finished successfully");
-  } catch (error) {
-    console.error("Automation error:", error);
   } finally {
     // await browser.close();
   }
