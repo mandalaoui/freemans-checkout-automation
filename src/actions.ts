@@ -1,5 +1,8 @@
 import { Page } from "puppeteer";
 
+/**
+ * Scrolls the element matching the selector into view (centered in viewport).
+ */
 async function scrollIntoView(page: Page, selector: string) {
   await page.evaluate((sel) => {
     const el = document.querySelector(sel);
@@ -9,6 +12,10 @@ async function scrollIntoView(page: Page, selector: string) {
   }, selector);
 }
 
+/**
+ * Types text into an input element. Ensures it's cleared before entering new text.
+ * Throws an error if the selector is not found or input cannot be cleared.
+ */
 export async function typeText(page: Page, selector: string, text: string) {
   const element = await page.waitForSelector(selector, { visible: true });
   if (!element) {
@@ -16,6 +23,7 @@ export async function typeText(page: Page, selector: string, text: string) {
   }
   await scrollIntoView(page, selector);
 
+  // Clear the input before typing.
   await element.click({ clickCount: 3 });
   await page.keyboard.press("Backspace");
   const cleared = await page.$eval(
@@ -27,9 +35,13 @@ export async function typeText(page: Page, selector: string, text: string) {
     throw new Error(`Failed to clear input: ${selector}`);
   }
 
+  // Type the new text.
   await element.type(text);
 }
 
+/**
+ * Clicks an element, with options for waiting for navigation or a new selector.
+ */
 export async function clickElement(
   page: Page,
   selector: string,
@@ -52,7 +64,7 @@ export async function clickElement(
         urlBefore
       );
     } catch {
-      console.warn("No navigation detected after click (may be SPA)");
+      // If no navigation was detected (e.g., SPA), continue.
     }
   } else {
     await page.click(selector);
@@ -63,6 +75,9 @@ export async function clickElement(
   }
 }
 
+/**
+ * Selects an option from a dropdown and validates it was set properly.
+ */
 export async function selectDropdown(page: Page, selector: string, value: string) {
   await page.waitForSelector(selector, { visible: true, timeout: 10000 });
   await page.select(selector, value);
@@ -77,6 +92,9 @@ export async function selectDropdown(page: Page, selector: string, value: string
   }
 }
 
+/**
+ * Sets a checkbox or radio button to the desired state.
+ */
 export async function setCheckboxOrRadio(
   page: Page,
   selector: string,
@@ -98,6 +116,9 @@ export async function setCheckboxOrRadio(
   }
 }
 
+/**
+ * Evaluates a function on the element specified by the selector.
+ */
 export async function evaluateOnSelector<T>(
   page: Page,
   selector: string,
@@ -106,4 +127,3 @@ export async function evaluateOnSelector<T>(
   await page.waitForSelector(selector, { visible: true, timeout: 10000 });
   return page.$eval(selector, fn);
 }
-

@@ -9,7 +9,7 @@ import { retry } from "./utils";
 import { getFormFields } from "./db";
 import { fillFields } from "./formFiller";
 
-// No retry wrapper needed: mostly page.goto/navigation and single wait
+// Navigate to homepage and verify load succeeded
 export async function goToHomepage(page: Page) {
     await page.goto("https://www.freemans.com/", {
         waitUntil: "networkidle2",
@@ -24,7 +24,7 @@ export async function goToHomepage(page: Page) {
     }
 }
 
-// No retry needed; already handles error and popup
+// Attempt to accept cookies; ignore if popup not present
 export async function acceptCookies(page: Page) {
     try {
         const selector = selectors.cookieAcceptButton;
@@ -47,11 +47,11 @@ export async function acceptCookies(page: Page) {
         }
         throw new Error("Accept button not found in cookie popup");
     } catch (err: any) {
-        console.log("No cookie popup (already accepted) ✔️");
+        // Popup not present or already accepted
     }
 }
 
-// Navigation only, wait for selectors, not "big" click
+// Go to a specific product and ensure required elements are visible
 export async function goToProduct(page: Page, productUrl: string) {
     await page.goto(productUrl, {
         waitUntil: "networkidle2",
@@ -71,7 +71,7 @@ export async function goToProduct(page: Page, productUrl: string) {
     });
 }
 
-// Not a big/important click or flow (choosing color only)
+// Select a product color if available
 export async function selectColor(page: Page) {
     await page.waitForSelector(selectors.colorButton, { timeout: 10000 });
 
@@ -100,7 +100,7 @@ export async function selectColor(page: Page) {
     throw new Error("No color button found");
 }
 
-// Wrapped in retry: important user click & selection logic with network+DOM updates
+// Select a preferred product size, wrapped in retry
 export async function selectSize(page: Page) {
     await retry(async () => {
         await page.waitForSelector(selectors.sizeButton, { timeout: 10000 });
@@ -132,7 +132,7 @@ export async function selectSize(page: Page) {
     });
 }
 
-// Wrapped in retry: important for updating bag count after click
+// Click add to bag and check that bag count increases; uses retry
 export async function addToBag(page: Page) {
     await retry(async () => {
         const before = await page.$eval(
@@ -163,7 +163,7 @@ export async function addToBag(page: Page) {
     });
 }
 
-// No click (just checks): no retry needed
+// Assert that the bag is not empty by checking count and empty state
 export async function assertBagHasItems(page: Page) {
     await page.waitForSelector(selectors.xfoBagCount, { timeout: 10000 });
 
@@ -181,7 +181,7 @@ export async function assertBagHasItems(page: Page) {
     }
 }
 
-// Already uses retry around big click+wait
+// Go to bag page, check for checkout button to confirm navigation succeeded
 export async function goToBag(page: Page) {
     await retry(async () => {
         await clickElement(page, selectors.bagButton);
@@ -198,23 +198,25 @@ export async function goToBag(page: Page) {
         if (!checkoutVisible) {
             throw new Error("Failed to navigate to the bag page (checkout button not visible)");
         }
+        // URL may not update in SPA, but checkout button found
         console.warn("URL did not include 'bag' (may be SPA, but checkout button found)");
     }
 }
 
-// Already uses retry for important click+navigation
+// Click checkout and wait for next page flow to load (account number input)
 export async function goToCheckout(page: Page) {
     await retry(() => clickElement(page, selectors.checkoutButton, { waitForNavigation: true }));
     await page.waitForSelector(selectors.accountNumberInput, { timeout: 10000 });
+    // Could check for login redirect here for authenticated flows
 }
 
-// Already uses retry for guest checkout click+navigation
+// Click guest checkout and ensure first name input is loaded
 export async function goToGuestCheckout(page: Page) {
     await retry(() => clickElement(page, selectors.guestCheckoutButton, { waitForNavigation: true }));
     await page.waitForSelector(selectors.firstNameInput, { timeout: 10000 });
 }
 
-// Wrap important continue delivery click in retry
+// Click delivery continue/apply button, ensure payment confirm container loads
 export async function continueDelivery(page: Page) {
     await page.waitForSelector(selectors.deliveryContainerWrapper, {
         visible: true,
@@ -231,7 +233,7 @@ export async function continueDelivery(page: Page) {
     });
 }
 
-// Wrap pay now click in retry (big/important click flow step)
+// Click Pay Now, validate payment mode is selected and card details appear
 export async function choosePayNow(page: Page) {
     await page.waitForSelector(selectors.confirmPayContainer, {
         visible: true,
@@ -245,7 +247,7 @@ export async function choosePayNow(page: Page) {
 
     await retry(() => page.click(selectors.paymentPayNowContainer));
 
-    // Wait for Pay Now container to be visibly "selected": check aria-selected or "active"/"selected" class
+    // Wait for Pay Now option to be visually selected
     await page.waitForFunction(() => {
         const el = document.querySelector('input[name="paymentChoice"]:checked');
         return el && el.getAttribute("value") === "cash";
@@ -257,26 +259,16 @@ export async function choosePayNow(page: Page) {
     });
 }
 
-// No retry: just calls fillFields (which has retry internally)
+// Fill in payment card fields; will retry failed field actions internally
 export async function fillCardDetails(page: Page) {
-    console.log("📝 Retrieving all form fields...");
     const fields = await getFormFields();
-
-    console.log("📋 Filtering card-related fields...");
     const cardFields = fields.filter(f =>
         ["cardName", "cardNumber", "expiry", "cvv"].includes(f.fieldName)
     );
-    console.log(
-        `✅ Card fields to fill: ${cardFields.map(f => f.fieldName).join(", ")}`
-    );
-
-    console.log("💳 Filling in card details fields...");
-    console.log(cardFields);
     await fillFields(page, cardFields);
-    console.log("🎉 Successfully filled all card details!");
 }
 
-// No click or big flow--just enable/disable test
+// Assert the purchase/apply button is enabled (not visually or programmatically disabled)
 export async function purchaseAvailable(page: Page) {
     await page.waitForSelector(selectors.applyButton, { visible: true });
 

@@ -1,5 +1,7 @@
-import { Page } from "puppeteer";
-
+/**
+ * Retry an async function a number of times with a delay between attempts.
+ * Throws the last encountered error if all attempts fail.
+ */
 export async function retry<T>(
     fn: () => Promise<T>,
     attempts = 3,
@@ -12,29 +14,35 @@ export async function retry<T>(
             return await fn();
         } catch (err) {
             lastError = err;
-
-            console.warn(`Retry ${i}/${attempts} failed`);
-
+            // Wait before the next attempt, unless this was the last attempt
             if (i < attempts) {
                 await new Promise(res => setTimeout(res, delayMs));
             }
         }
     }
 
-    throw lastError;
+    throw new Error(`Step ${currentStep || "unknown"} failed: ${lastError && lastError.message ? lastError.message : lastError}`);
 }
 
 let currentStep = "";
 
-export async function runStep(stepName: string, fn: () => Promise<void>) {
-    console.log(`\n➡️ STEP: ${stepName}`);
+/**
+ * Execute a named step with retry and optional validation.
+ * Throws if validation fails or all retry attempts fail.
+ */
+export async function runStep(
+    stepName: string,
+    fn: () => Promise<void>,
+    validate?: () => Promise<boolean>
+) {
     currentStep = stepName;
 
-    try {
+    await retry(async () => {
         await fn();
-        console.log(`✔ SUCCESS: ${stepName}`);
-    } catch (err) {
-        console.error(`❌ FAILED: ${stepName}`);
-        throw err;
-    }
+
+        if (validate) {
+            const ok = await validate();
+            if (!ok) throw new Error("Validation failed");
+        }
+    });
 }

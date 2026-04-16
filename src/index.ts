@@ -3,25 +3,27 @@ import { runHappyFlow } from "./flows/happyFlow";
 import { runNegativeFlows } from "./flows/negativeFlows";
 
 async function run() {
-  const { browser, page } = await launchBrowser();
+  // Launch a new browser instance and create a context/page for tests
+  const { browser } = await launchBrowser();
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
   try {
-    console.log("\n🚀 RUNNING HAPPY FLOW\n");
-
+    // Run the "Happy" (positive path) flow
     await runHappyFlow(page);
 
-    // await page.close();
-    console.log("\n✅ HAPPY FLOW PASSED\n");
+    await context.close();
 
-    // console.log("\n🚀 RUNNING NEGATIVE FLOWS\n");
-    // await runNegativeFlows(browser);
-    // console.log("\n🎉 ALL TESTS PASSED");
+    // Run known negative flows to validate error handling
+    await runNegativeFlows(browser);
 
   } catch (err: any) {
-    console.error("\n💥 TEST FAILED");
+    // Log any test failure to aid in debugging
+    console.error("TEST FAILED");
     console.error("ERROR:", err.message);
 
   } finally {
-    // await browser.close();
+    // Always close the browser to avoid resource leaks
+    await browser.close();
   }
 }
 
