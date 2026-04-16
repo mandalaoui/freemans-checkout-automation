@@ -167,22 +167,37 @@ This helps prevent false-positive success in cases where the UI responded unexpe
 
 Critical state-changing actions use retry logic to make the automation more stable against transient UI timing issues.
 
-## Example Stored Form Fields
+## 📋 Form Fields Table
 
-Examples of data stored in SQLite include:
+| Selector               | Property | Example Value         |
+|------------------------|----------|----------------------|
+| #Title                 | value    | Mr                   |
+| #FirstName             | value    | Steve                |
+| #LastName              | value    | Rosenblum            |
+| #dob_day               | value    | 10                   |
+| #dob_month             | value    | 05                   |
+| #dob_year              | value    | 1995                 |
+| #DayTimeTelephone      | value    | 07123456789          |
+| #houseId               | value    | 12                   |
+| #postCode              | value    | SW1A 1AA             |
+| #Email                 | value    | test@example.com     |
+| #ConfirmEmail          | value    | test@example.com     |
+| #Password              | value    | Test1234!            |
+| #confirmPassword       | value    | Test1234!            |
+| #CardHolderName        | value    | Steve Rosenblum      |
+| #CardNumber            | value    | 4111111111111111     |
+| #ExpiryDateMonthYear   | value    | 12/30                |
+| #CardSecurityCode      | value    | 123                  |
 
-| Field Name    | Selector             | Action | Example Value         |
-|---------------|----------------------|--------|----------------------|
-| title         | #Title               | select | Mr                   |
-| firstName     | #FirstName           | type   | Steve                |
-| lastName      | #LastName            | type   | Rosenblum            |
-| postcode      | #postCode            | type   | SW1A 1AA             |
-| email         | #Email               | type   | test@example.com     |
-| confirmEmail  | #ConfirmEmail        | type   | test@example.com     |
-| cardName      | #CardHolderName      | type   | Steve Rosenblum      |
-| cardNumber    | #CardNumber          | type   | 4111111111111111     |
-| expiry        | #ExpiryDateMonthYear | type   | 12/30                |
-| cvv           | #CardSecurityCode    | type   | 123                  |
+### 📊 Action Elements (Optional)
+
+| Selector                     | Property | Example Value |
+|------------------------------|----------|--------------|
+| button.primary.bagButton      | click    | -            |
+| #proceedbutton2              | click    | -            |
+| #registerLink                | click    | -            |
+| #searchAddressImageButton    | click    | -            |
+| #applybutton                 | click    | -            |
 
 ## Key Stability Features
 
