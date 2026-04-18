@@ -1,4 +1,4 @@
-import { FormField } from "./types";
+import { FormField } from "../types/form.types";
 
 // List of form fields and their configs for autofill and testing purposes
 export const formFields: FormField[] = [

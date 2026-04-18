@@ -1,7 +1,7 @@
 import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
 import path from "path";
-import { FormField } from "./types";
+import { FormField } from "../types/form.types";
 
 let dbInstance: Database | null = null;
 
@@ -13,7 +13,7 @@ export async function initDb(): Promise<Database> {
   if (dbInstance) return dbInstance;
 
   dbInstance = await open({
-    filename: path.join(__dirname, "..", "database", "form_selectors.sqlite"),
+    filename: path.join(__dirname, "../..", "database", "automation.sqlite"),
     driver: sqlite3.Database,
   });
 

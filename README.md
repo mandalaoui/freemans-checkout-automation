@@ -2,232 +2,280 @@
 
 End-to-end checkout automation project for the Freemans website, built with **Puppeteer**, **TypeScript**, and **SQLite**.
 
-## Overview
+---
 
-This project automates a product purchase journey on the Freemans website:
+## 📌 Overview
 
-- navigating to a product page
-- selecting product options
-- adding the product to the bag
-- proceeding through checkout as a guest
-- filling the multi-page checkout form up to the point of purchase
+This project automates a complete purchase flow on the Freemans website — from product selection to the final payment step (without executing an actual purchase).
 
-The project also includes several negative test scenarios to validate form behavior and error handling.
+The automation includes:
 
-## Project Goals
+- Full **multi-step checkout flow**
+- **Database-driven form filling**
+- **Error handling and retry mechanisms**
+- **Positive and negative test scenarios**
 
-The purpose of this project is to demonstrate:
-- reliable browser automation with Puppeteer
-- structured and reusable test architecture
-- database-driven form input handling
-- validation of critical checkout steps
-- handling of common UI instability using retries and explicit checks
+The implementation follows a **clean, modular architecture** inspired by Page Object Model (POM), ensuring scalability, maintainability, and readability.
 
-## Tech Stack
+---
+
+## ⚠️ Product Assumptions
+
+The automation assumes a product structure that includes selectable options (such as size and/or color).
+
+Different products on the website may have different structures, which can affect the flow.  
+To ensure stability and consistency, a compatible product URL is used for the automation.
+
+---
+
+## 🎯 Assignment Goals
+
+This project fulfills all requirements defined in the task:
+
+- Automate a real checkout flow using **Puppeteer + TypeScript**  
+- Store selectors, properties, and values in a **SQLite database**  
+- Implement SQL queries for:
+  - Retrieve all records
+  - Search by field
+  - Update record
+  - Delete record  
+- Provide a complete GitHub project with:
+  - Source code
+  - Database file
+  - SQL queries
+  - Documentation  
+
+---
+
+## 🧱 Tech Stack
 
 - **TypeScript**
 - **Puppeteer**
 - **SQLite**
 - **Node.js**
 
-## Main Flows
+---
 
-### Happy Flow
+## ▶️ How to Run
 
-The happy flow automates the following steps:
-
-1. Open Freemans homepage
-2. Accept cookies (if shown)
-3. Navigate to a product page
-4. Select color and size
-5. Add the item to the shopping bag
-6. Open the bag
-7. Proceed to checkout
-8. Continue as guest
-9. Fill personal details form
-10. Find and select address
-11. Fill remaining account details
-12. Continue through delivery step
-13. Choose payment option
-14. Fill payment details
-15. Verify readiness for final purchase step
-
-### Negative Flows
-
-The project includes the following negative scenarios:
-
-- adding to bag without selecting a size
-- entering an invalid postcode
-- entering mismatched email / confirm email values
-- entering invalid card details
-
-## Project Structure
-
-```text
-src/
-  flows/
-    happyFlow.ts
-    negativeFlows.ts
-  actions.ts
-  browser.ts
-  db.ts
-  formData.ts
-  formFiller.ts
-  navigation.ts
-  selectors.ts
-  seedDb.ts
-  types.ts
-  utils.ts
-  index.ts
-
-database/
-  form_selectors.sqlite
-
-queries.sql
-README.md
-```
-
-## Database Design
-
-The project uses a local SQLite database file to store reusable form data.
-
-**Table: form_fields**
-
-Each row represents a field used during checkout, including:
-
-- field name
-- selector
-- action type
-- value
-
-Typical stored actions:
-- type
-- select
-- click
-
-This allows the automation to remain flexible and reduces hardcoded input values inside the flow logic.
-
-### SQL Queries
-
-A dedicated `queries.sql` file is included with the required SQL operations:
-- Retrieve all records
-- Search by field name
-- Update a record
-- Delete a record
-
-## Setup
-
-Install dependencies:
+1. Install dependencies:
 
 ```bash
 npm install
 ```
 
-Seed the database:
-
-```bash
-npx ts-node src/seedDb.ts
-```
-
-Run the automation:
+2. Run the automation script:
 
 ```bash
 npx ts-node src/index.ts
 ```
 
-## How It Works
+> **Note:**  
+> The database is automatically seeded at runtime if it is empty — no manual setup or seeding is required.
 
-### 1. Browser Isolation
+### 🔄 Execution Flow
 
-Each main run uses a fresh browser context to avoid stale session state, saved login state, or cookie-related inconsistencies.
+Running the script will execute:
 
-### 2. Modular Architecture
+- ✅ Happy Flow (full checkout simulation)
+- ❌ Negative Flows:
+  - Missing size selection
+  - Invalid postcode
+  - Email mismatch
+  - Invalid payment details
 
-The code is split by responsibility:
+---
 
-- `actions.ts` – low-level reusable browser actions
-- `navigation.ts` – page-to-page navigation logic
-- `formFiller.ts` – DB-driven form filling and validation
-- `flows/` – happy and negative business flows
-- `db.ts` – SQLite access layer
-- `utils.ts` – shared helpers such as retry and step runner
+## 📁 Project Structure
 
-### 3. Validation Strategy
+```text
+src/
+  browser/          → Browser setup
+  pages/            → Page Object Model classes
+  flows/            → Business flows (happy + negative)
+  db/               → SQLite database layer
+  data/             → Mock data for seeding
+  selectors/        → Centralized selectors
+  validation/       → Validation logic
+  utils/            → Helpers (retry, logger, actions)
+  forms/            → Form filling logic
+  types/            → Type definitions
 
-The project validates automation on two levels:
+database/
+  automation.sqlite
 
-- **action-level validation**  
-  verifies that clicks, typing, and selections succeeded
-- **flow-level validation**  
-  verifies that the automation reached the correct next checkout state
+queries.sql
+README.md
+```
 
-This helps prevent false-positive success in cases where the UI responded unexpectedly.
+---
 
-### 4. Retry Handling
+## 🗄️ Database Design
 
-Critical state-changing actions use retry logic to make the automation more stable against transient UI timing issues.
+**Table: form_fields**
 
-## 📋 Form Fields Table
+Each record represents a form field:
 
-| Selector               | Property | Example Value         |
-|------------------------|----------|----------------------|
-| #Title                 | value    | Mr                   |
-| #FirstName             | value    | Steve                |
-| #LastName              | value    | Rosenblum            |
-| #dob_day               | value    | 10                   |
-| #dob_month             | value    | 05                   |
-| #dob_year              | value    | 1995                 |
-| #DayTimeTelephone      | value    | 07123456789          |
-| #houseId               | value    | 12                   |
-| #postCode              | value    | SW1A 1AA             |
-| #Email                 | value    | test@example.com     |
-| #ConfirmEmail          | value    | test@example.com     |
-| #Password              | value    | Test1234!            |
-| #confirmPassword       | value    | Test1234!            |
-| #CardHolderName        | value    | Steve Rosenblum      |
-| #CardNumber            | value    | 4111111111111111     |
-| #ExpiryDateMonthYear   | value    | 12/30                |
-| #CardSecurityCode      | value    | 123                  |
+| Field        | Description                |
+|--------------|---------------------------|
+| field_name   | Logical field identifier   |
+| selector     | CSS selector              |
+| action       | type / select / click     |
+| value        | Input value               |
 
-### 📊 Action Elements (Optional)
+📋 **Form Selectors Table**
 
-| Selector                     | Property | Example Value |
-|------------------------------|----------|--------------|
-| button.primary.bagButton      | click    | -            |
-| #proceedbutton2              | click    | -            |
-| #registerLink                | click    | -            |
-| #searchAddressImageButton    | click    | -            |
-| #applybutton                 | click    | -            |
+### 🧾 Input Fields
 
-## Key Stability Features
+| Selector                | Property | Example Value       |
+|-------------------------|----------|--------------------|
+| #Title                  | select   | Mr                 |
+| #FirstName              | value    | Steve              |
+| #LastName               | value    | Rosenblum          |
+| #dob_day                | select   | 10                 |
+| #dob_month              | select   | 05                 |
+| #dob_year               | select   | 1995               |
+| #DayTimeTelephone       | value    | 07123456789        |
+| #houseId                | value    | 12                 |
+| #postCode               | value    | SW1A 1AA           |
+| #Email                  | value    | test@example.com   |
+| #ConfirmEmail           | value    | test@example.com   |
+| #Password               | value    | Test1234!          |
+| #confirmPassword        | value    | Test1234!          |
+| #CardHolderName         | value    | Steve Rosenblum    |
+| #CardNumber             | value    | 4111111111111111   |
+| #ExpiryDateMonthYear    | value    | 12/30              |
+| #CardSecurityCode       | value    | 123                |
 
-- explicit waits for visible selectors
-- DOM-based validation after important actions
-- retry wrapper for flaky UI interactions
-- isolated browser contexts for predictable runs
-- clean separation between page actions and business flow logic
+### 🔘 Action Elements (Clicks / Interactions)
 
-## Notes
+| Selector                       | Property | Example Value |
+|---------------------------------|----------|--------------|
+| button.primary.bagButton        | click    | -            |
+| .xfoBagContainer                | click    | -            |
+| #proceedbutton2                | click    | -            |
+| #registerLink                  | click    | -            |
+| #searchAddressImageButton      | click    | -            |
+| #applybutton                   | click    | -            |
 
-- The script fills the checkout flow up to the point of actual purchase.
-- No real purchase is made.
-- A fake card number is used for testing purposes only.
-- reCAPTCHA handling is intentionally not implemented, according to the task instructions.
+### 🎯 Product Selection
 
-## Submission Contents
+| Selector                               | Property | Example Value    |
+|-----------------------------------------|----------|-----------------|
+| span.productOptionItem                 | click    | Size: 12        |
+| span.productOptionItem.productSwatchItem| click    | Color: Green Stripe |
 
-This repository includes:
+### 📍 Address Selection
 
-- TypeScript source code using Puppeteer
-- README.md with setup and execution instructions
-- SQLite database artifact (form_selectors.sqlite)
-- queries.sql containing the required SQL queries
+| Selector         | Property      | Example Value    |
+|------------------|--------------|-----------------|
+| #addressSelect   | select       | First available |
+| .adr             | read/validate| Address summary |
 
-## Status
+---
 
-- Happy flow implemented
-- Negative scenarios implemented
-- SQLite integration completed
-- SQL queries file included
-- Error handling and retry logic included
-- Ready for submission
+## 🧠 How It Works
+
+### 1. Database-Driven Forms
+
+All form fields are loaded from SQLite (`getFormFields()`), allowing:
+
+- easy updates
+- flexibility
+- clean separation of data and logic
+
+### 2. Page Object Model (POM)
+
+Each logical page is encapsulated as a class (e.g., `HomePage`, `ProductPage`, `CheckoutPage`, `PaymentPage`), supporting:
+
+- reusable actions
+- clear responsibilities
+- maintainable structure
+
+### 3. Retry Mechanism
+
+Critical UI actions are wrapped with retry logic to handle:
+
+- dynamic loading
+- UI delays
+- flaky interactions
+
+### 4. Validation Strategy
+
+Two levels of validation are implemented:
+
+- **Action-level**: Ensures each interaction succeeded (click, type, select)
+- **Flow-level**: Ensures correct navigation between steps
+
+### 5. Error Handling
+
+The system includes:
+
+- try/catch blocks
+- retry logic
+- explicit failure conditions
+
+---
+
+## ❌ Negative Test Scenarios
+
+Additional test cases include:
+
+| Scenario             | Expected Behavior         |
+|----------------------|--------------------------|
+| No size selected     | Error message shown       |
+| Invalid postcode     | Validation error         |
+| Email mismatch       | Validation error         |
+| Invalid card         | Payment blocked          |
+
+---
+
+## 📊 SQL Queries
+
+**File:** `queries.sql`
+
+Contains SQL for:
+
+- Retrieve all records
+- Search by field
+- Update a record
+- Delete a record
+
+---
+
+## ⚙️ Environment Configuration
+
+`.env` file example:
+
+```
+DEBUG=true
+```
+
+**DEBUG Mode**
+
+- `true` → detailed logs  
+- `false` → clean execution
+
+---
+
+## 🛡️ Stability Features
+
+- Explicit waits for UI elements
+- Retry mechanism for critical actions
+- DOM validation after interactions
+- Isolated browser contexts
+- Modular architecture
+
+---
+
+## ⚠️ Notes
+
+- _No real purchase is executed_
+- _Fake card details are used_
+- _reCAPTCHA handling is intentionally skipped (per instructions)_
+
+---
+
+## 💡 Summery
+
+The automation focuses on stability, modular design, and realistic user interaction across a multi-step checkout process.

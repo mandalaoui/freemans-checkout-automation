@@ -1,26 +1,30 @@
-import { launchBrowser } from "./browser";
+import dotenv from "dotenv";
+dotenv.config();
+
+import { launchBrowser } from "./browser/browser";
 import { runHappyFlow } from "./flows/happyFlow";
 import { runNegativeFlows } from "./flows/negativeFlows";
+import { seedDbIfNeeded } from "./utils/actions.utils";
 
 async function run() {
-  // Launch a new browser instance and create a context/page for tests
+  // Before starting, ensure the form_fields table is seeded if it's empty.
+  // This ensures the happy/negative flows have the form data they need.
+  await seedDbIfNeeded();
+
+  if (process.env.DEBUG === "true") console.log("Launching browser...");
   const { browser } = await launchBrowser();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   try {
-    // Run the "Happy" (positive path) flow
+    if (process.env.DEBUG === "true") console.log("Running Happy Flow...");
     await runHappyFlow(page);
-
     await context.close();
-
-    // Run known negative flows to validate error handling
+    if (process.env.DEBUG === "true") console.log("Happy Flow completed. Running Negative Flows...");
     await runNegativeFlows(browser);
-
+    if (process.env.DEBUG === "true") console.log("Negative Flows completed.");
   } catch (err: any) {
-    // Log any test failure to aid in debugging
     console.error("TEST FAILED");
     console.error("ERROR:", err.message);
-
   } finally {
     // Always close the browser to avoid resource leaks
     await browser.close();

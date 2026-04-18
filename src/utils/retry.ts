@@ -2,10 +2,14 @@
  * Retry an async function a number of times with a delay between attempts.
  * Throws the last encountered error if all attempts fail.
  */
+
+let currentStep = "";
+
+
 export async function retry<T>(
     fn: () => Promise<T>,
-    attempts = 3,
-    delayMs = 500
+    attempts = 2,
+    delayMs = 200, 
 ): Promise<T> {
     let lastError: any;
 
@@ -22,27 +26,4 @@ export async function retry<T>(
     }
 
     throw new Error(`Step ${currentStep || "unknown"} failed: ${lastError && lastError.message ? lastError.message : lastError}`);
-}
-
-let currentStep = "";
-
-/**
- * Execute a named step with retry and optional validation.
- * Throws if validation fails or all retry attempts fail.
- */
-export async function runStep(
-    stepName: string,
-    fn: () => Promise<void>,
-    validate?: () => Promise<boolean>
-) {
-    currentStep = stepName;
-
-    await retry(async () => {
-        await fn();
-
-        if (validate) {
-            const ok = await validate();
-            if (!ok) throw new Error("Validation failed");
-        }
-    });
 }

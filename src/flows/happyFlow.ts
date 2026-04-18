@@ -1,95 +1,110 @@
 import { Page } from "puppeteer";
 
-import {
-  goToHomepage,
-  goToProduct,
-  acceptCookies,
-  selectSize,
-  addToBag,
-  goToBag,
-  selectColor,
-  goToCheckout,
-  goToGuestCheckout,
-  continueDelivery,
-  choosePayNow,
-  fillCardDetails,
-  purchaseAvailable,
-  assertBagHasItems
-} from "../navigation";
-import {
-  fillInitialAddressForm,
-  fillPostAddressForm,
-  clickContinue,
-  clickFindAddress,
-  selectAddressFromResults,
-} from "../formFiller";
-import { runStep } from "../utils";
-import { selectors } from "../selectors";
+import { runStep } from "../utils/actions.utils";
+import { HomePage } from "../pages/Homepage";
+import { ProductPage } from "../pages/ProductPage";
+import { BagPage } from "../pages/BagPage";
+import { CheckoutPage } from "../pages/CheckoutPage";
+import { DeliveryPage } from "../pages/DeliveryPage";
+import { PaymentPage } from "../pages/PaymentPage";
+import { getFormFields } from "../db/db";
+import { assertCardDetailsVisible, assertPayNowSelected, assertPurchaseAvailable } from "../validation/payment.validation";
+import { selectors as paymentSelectors } from "../selectors/payment.selectors";
 
 const PRODUCT_URL = "https://www.freemans.com/products/bonprix-stripe-short-sleeve-blouse/_/A-913221_8";
 
 // Main happy path test runner for a successful guest purchase flow
 export async function runHappyFlow(page: Page) {
-  // Homepage visit and consent flow
-  await runStep("GO_TO_HOMEPAGE", () => goToHomepage(page));
-  await runStep("ACCEPT_COOKIES", () => acceptCookies(page));
+  const homePage = new HomePage(page);
+  const product = new ProductPage(page);
+  const bagPage = new BagPage(page);
+  const checkoutPage = new CheckoutPage(page);
+  const deliveryPage = new DeliveryPage(page);
+  const paymentPage = new PaymentPage(page);
 
-  // Product selection and adding to bag
-  await runStep("GO_TO_PRODUCT", () => goToProduct(page, PRODUCT_URL));
-  await runStep("SELECT_COLOR", () => selectColor(page));
-  await runStep("SELECT_SIZE", () => selectSize(page));
-  await runStep("ADD_TO_BAG", () => addToBag(page));
+  await runStep("GO_TO_HOMEPAGE", async () => {
+    await homePage.load();
+  });
 
-  // Ensure item is in bag, then navigate to bag
-  await runStep("ASSERT_BAG", () => assertBagHasItems(page));
-  await runStep("GO_TO_BAG", () => goToBag(page));
+  await runStep("GO_TO_PRODUCT", async () => {
+    await product.open(PRODUCT_URL);
+  });
 
-  // Move to checkout; waits for login page
+  await runStep("SELECT_COLOR", async () => {
+    await product.selectColor();
+  });
+
+  await runStep("SELECT_SIZE", async () => {
+    await product.selectSize();
+  });
+
+  await runStep("ADD_TO_BAG", async () => {
+    await product.addToBag();
+  });
+
+  await runStep("ASSERT_BAG", async () => {
+    await product.assertAddedToBag();
+  });
+
+  await runStep("GO_TO_BAG", async () => {
+    await bagPage.open();
+  });
+
+  await runStep("GO_TO_CHECKOUT", async () => {
+    await bagPage.goToCheckout();
+  });
+
+  await runStep("GUEST_CHECKOUT", async () => {
+    await checkoutPage.startGuestCheckout();
+  });
+
+  await runStep("FILL_INITIAL_FORM", async () => {
+    await checkoutPage.fillInitialAddressForm();
+  });
+
+  await runStep("FIND_ADDRESS", async () => {
+    await checkoutPage.clickFindAddress();
+  });
+
+  await runStep("SELECT_ADDRESS", async () => {
+    await checkoutPage.selectAddressFromResults();
+  });
+
+  await runStep("FILL_POST_FORM", async () => {
+    await checkoutPage.fillPostAddressForm();
+  });
+
+  await runStep("CONTINUE", async () => {
+    await checkoutPage.clickContinue();
+  });
+
+  await runStep("CONTINUE_FROM_DELIVERY", async () => {
+    await deliveryPage.continueFromDelivery();
+  });
+
   await runStep(
-    "GO_TO_CHECKOUT",
-    () => goToCheckout(page),
+    "SELECT_PAY_NOW",
     async () => {
-      const url = page.url();
-      return url.includes("co_login");
+      await paymentPage.selectPayNow();
+    },
+    async () => {
+      await assertPayNowSelected(page, paymentSelectors.paymentPayNowInput);
+      await assertCardDetailsVisible(page, paymentSelectors.cardDetailsContainer);
+      return true;
     }
   );
 
-  // Guest checkout, waiting for personal details step
-  await runStep(
-    "GUEST_CHECKOUT",
-    () => goToGuestCheckout(page),
-    async () => {
-      const url = page.url();
-      return url.includes("co_personal_details");
-    }
-  );
+  await runStep("FILL_PAYMENT_DETAILS", async () => {
+    const allFields = await getFormFields();
 
-  // Guest address entry and selection
-  await runStep("FILL_INITIAL_FORM", () => fillInitialAddressForm(page));
-  await runStep("FIND_ADDRESS", () => clickFindAddress(page));
-  await runStep("SELECT_ADDRESS", () => selectAddressFromResults(page));
-  await runStep("FILL_POST_FORM", () => fillPostAddressForm(page));
-  await runStep("CONTINUE", () => clickContinue(page));
+    await paymentPage.fillPaymentDetails(
+      allFields.filter(f =>
+        ["cardName", "cardNumber", "expiry", "cvv"].includes(f.fieldName)
+      )
+    );
+  });
 
-  // Delivery stage; waits for payment container to appear
-  await runStep(
-    "DELIVERY",
-    () => continueDelivery(page),
-    async () => {
-      return await page.$(selectors.confirmPayContainer) !== null;
-    }
-  );
-
-  // Choose pay now, wait for card details panel
-  await runStep(
-    "PAY_NOW",
-    () => choosePayNow(page),
-    async () => {
-      return await page.$(selectors.cardDetailsContainer) !== null;
-    }
-  );
-
-  // Fill in card details and check payment readiness
-  await runStep("FILL_CARD", () => fillCardDetails(page));
-  await runStep("CHECK_PAYMENT", () => purchaseAvailable(page));
+  await runStep("ASSERT_PAYMENT_READY", async () => {
+    await assertPurchaseAvailable(page);
+  });
 }

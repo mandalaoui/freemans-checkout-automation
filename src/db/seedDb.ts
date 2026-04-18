@@ -1,5 +1,5 @@
 import { insertFormFields, clearFormFields } from "./db";
-import { formFields } from "./formData";
+import { formFields } from "../data/mockData";
 
 // Seeds the database with initial form fields for test/dev
 async function seed() {
