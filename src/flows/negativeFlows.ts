@@ -12,7 +12,7 @@ import { selectors as checkoutSelectors } from "../selectors/checkout.selectors"
 
 const PRODUCT_URL = "https://www.freemans.com/products/bonprix-stripe-short-sleeve-blouse/_/A-913221_8";
 
-// This test attempts to add a product to the bag without choosing a size. It should show an error.
+// Verifies the site blocks adding to bag when a required size hasn't been selected
 export async function runNoSizeFlow(page: Page) {
   const homePage = new HomePage(page);
   const productPage = new ProductPage(page);
@@ -29,7 +29,7 @@ export async function runNoSizeFlow(page: Page) {
     await productPage.selectColor();
   });
 
-  // Do NOT select size
+  // Intentionally skip selecting size to trigger client-side validation
   await runStep("CLICK_ADD_TO_BAG", async () => {
     await page.evaluate(() => {
       const btn = document.querySelector("button.primary.bagButton");
@@ -51,7 +51,7 @@ export async function runNoSizeFlow(page: Page) {
   });
 }
 
-// This test enters an invalid postcode and expects an error message.
+// Ensures an invalid postcode is correctly rejected with an appropriate error message
 export async function runInvalidPostcodeFlow(page: Page) {
   const homePage = new HomePage(page);
   const productPage = new ProductPage(page);
@@ -98,7 +98,7 @@ export async function runInvalidPostcodeFlow(page: Page) {
     await checkoutPage.fillInitialAddressForm();
   });
 
-  // Submit invalid postcode
+  // Use a clearly invalid postcode string to verify form validation
   await runStep("TYPE_INVALID_POSTCODE", async () => {
     await page.type("#postCode", "INVALID");
   });
@@ -124,7 +124,7 @@ export async function runInvalidPostcodeFlow(page: Page) {
   });
 }
 
-// This test submits mismatched emails and expects a validation error.
+// Validates that mismatched email and confirm email fields result in a validation error
 export async function runEmailMismatchFlow(page: Page) {
   const homePage = new HomePage(page);
   const productPage = new ProductPage(page);
@@ -179,7 +179,7 @@ export async function runEmailMismatchFlow(page: Page) {
     await checkoutPage.selectAddressFromResults();
   });
 
-  // Enter differing email and confirm email fields
+  // Intentional mismatch to confirm the error message appears
   await runStep("TYPE_EMAIL", async () => {
     await page.type("#Email", "test@example.com");
   });
@@ -207,7 +207,7 @@ export async function runEmailMismatchFlow(page: Page) {
   }
 }
 
-// This test enters an invalid card number during payment and expects a validation error.
+// Verifies robust validation by supplying intentionally invalid credit card details
 export async function runInvalidCardFlow(page: Page) {
   const homePage = new HomePage(page);
   const productPage = new ProductPage(page);
@@ -280,7 +280,7 @@ export async function runInvalidCardFlow(page: Page) {
     await paymentPage.selectPayNow();
   });
 
-  // Provide deliberately invalid card details and expect error
+  // Use non-realistic card details to assert payment validation is working
   await runStep("TYPE_INVALID_CARD", async () => {
     await page.type("#CardHolderName", "Test User");
     await page.type("#CardNumber", "123");
@@ -306,9 +306,8 @@ export async function runInvalidCardFlow(page: Page) {
   });
 }
 
-// Runs all negative test flows using new browser contexts for isolation
+// Runs negative test flows in separate browser contexts to avoid test interference
 export async function runNegativeFlows(browser: Browser) {
-  // Run no size flow
   {
     if (process.env.DEBUG === "true") console.log("Running negative flow: no size selected");
     const context = await browser.createBrowserContext();
@@ -317,16 +316,14 @@ export async function runNegativeFlows(browser: Browser) {
     await context.close();
     if (process.env.DEBUG === "true") console.log("Finished negative flow: no size selected");
   }
-  // Run invalid postcode flow
   {
     if (process.env.DEBUG === "true") console.log("Running negative flow: invalid postcode");
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
     await runInvalidPostcodeFlow(page);
-    // await context.close();
+    await context.close();
     if (process.env.DEBUG === "true") console.log("Finished negative flow: invalid postcode");
   }
-  // Run email mismatch flow
   {
     if (process.env.DEBUG === "true") console.log("Running negative flow: email mismatch");
     const context = await browser.createBrowserContext();
@@ -335,7 +332,6 @@ export async function runNegativeFlows(browser: Browser) {
     await context.close();
     if (process.env.DEBUG === "true") console.log("Finished negative flow: email mismatch");
   }
-  // Run invalid card flow
   {
     if (process.env.DEBUG === "true") console.log("Running negative flow: invalid card details");
     const context = await browser.createBrowserContext();

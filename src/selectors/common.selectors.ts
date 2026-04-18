@@ -1,11 +1,11 @@
 export const commonSelectors = {
-    // Bag/cart-related selectors
-    bagButton: ".xfoBagContainer", // Opens the shopping bag/cart
+    // Used for accessing the shopping bag and triggering cart-related flows
+    bagButton: ".xfoBagContainer",
 
-    deliveryContainerWrapper: ".deliveryContainerWrapper", // Wrapper for delivery address section
+    deliveryContainerWrapper: ".deliveryContainerWrapper",
 
     confirmPayContainer: ".confirmContainerWrapper",
 
-    // Final apply/purchase button
-    applyButton: "#applybutton", // Button to confirm/apply delivery/payment
+    // Critical action button that finalizes delivery and payment
+    applyButton: "#applybutton",
   };

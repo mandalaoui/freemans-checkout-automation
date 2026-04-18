@@ -67,7 +67,7 @@ npm install
 2. Run the automation script:
 
 ```bash
-npx ts-node src/index.ts
+npm start
 ```
 
 > **Note:**  
@@ -245,17 +245,15 @@ Contains SQL for:
 
 ## ⚙️ Environment Configuration
 
-`.env` file example:
+To set up environment variables, create a `.env` file in the project root:
 
 ```
 DEBUG=true
 ```
 
-**DEBUG Mode**
-
-- `true` → detailed logs  
-- `false` → clean execution
-
+**DEBUG**  
+Set `DEBUG=true` to enable verbose logging for debugging and development.  
+Set `DEBUG=false` (or omit) for minimal logs and clean output during normal runs.
 ---
 
 ## 🛡️ Stability Features
@@ -276,6 +274,6 @@ DEBUG=true
 
 ---
 
-## 💡 Summery
+## 💡 Summary
 
 The automation focuses on stability, modular design, and realistic user interaction across a multi-step checkout process.

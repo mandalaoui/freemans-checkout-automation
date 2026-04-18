@@ -2,11 +2,8 @@ import { Page } from "puppeteer";
 import { retry } from "./retry";
 import { logStep, logSuccess, logError } from "./logger";
 import { getFormFields } from "../db/db";
-import { formFields } from "../data/mockData";
-import { insertFormFields } from "../db/db";
-/**
- * Scrolls the element matching the selector into view (centered in viewport).
- */
+import { seed } from "../db/seedDb";
+
 async function scrollIntoView(page: Page, selector: string) {
     await page.evaluate((sel) => {
         const el = document.querySelector(sel);
@@ -16,10 +13,8 @@ async function scrollIntoView(page: Page, selector: string) {
     }, selector);
 }
 
-/**
- * Types text into an input element. Ensures it's cleared before entering new text.
- * Throws an error if the selector is not found or input cannot be cleared.
- */
+// Ensures input is cleared before typing to prevent leftover/garbled values
+// Throws if input cannot be cleared, preventing silent clobbering
 export async function typeText(page: Page, selector: string, text: string) {
     const element = await page.waitForSelector(selector);
     if (!element) {
@@ -27,7 +22,6 @@ export async function typeText(page: Page, selector: string, text: string) {
     }
     await scrollIntoView(page, selector);
 
-    // Clear the input before typing.
     await element.click({ clickCount: 3 });
     await page.keyboard.press("Backspace");
     const cleared = await page.$eval(
@@ -39,13 +33,11 @@ export async function typeText(page: Page, selector: string, text: string) {
         throw new Error(`Failed to clear input: ${selector}`);
     }
 
-    // Type the new text.
     await element.type(text);
 }
 
-/**
- * Clicks an element, with options for waiting for navigation or a new selector.
- */
+// Allows explicit waits for navigation or for selectors after click,
+// supporting both classic and SPA flows
 export async function clickElement(
     page: Page,
     selector: string,
@@ -68,7 +60,7 @@ export async function clickElement(
                 urlBefore
             );
         } catch {
-            // If no navigation was detected (e.g., SPA), continue.
+            // Do nothing if navigation not detected (SPA scenario)
         }
     } else {
         await page.click(selector);
@@ -79,9 +71,7 @@ export async function clickElement(
     }
 }
 
-/**
- * Selects an option from a dropdown and validates it was set properly.
- */
+// Checks that the dropdown value was set as expected, catching potential site failures or test flakiness
 export async function selectDropdown(page: Page, selector: string, value: string) {
     await page.waitForSelector(selector, { timeout: 10000 });
     await page.select(selector, value);
@@ -96,10 +86,7 @@ export async function selectDropdown(page: Page, selector: string, value: string
     }
 }
 
-
-/**
- * Sets a checkbox or radio button to the desired state.
- */
+// Triggers wrapper click when present to support custom-checkbox/radio implementations
 export async function setCheckboxOrRadio(
     page: Page,
     selector: string,
@@ -127,9 +114,7 @@ export async function setCheckboxOrRadio(
     }
   }
 
-/**
- * Evaluates a function on the element specified by the selector.
- */
+// Used for convenience when encapsulating direct DOM logic under a selector
 export async function evaluateOnSelector<T>(
     page: Page,
     selector: string,
@@ -139,10 +124,7 @@ export async function evaluateOnSelector<T>(
     return page.$eval(selector, fn);
 }
 
-/**
- * Execute a named step with retry and optional validation, with timestamped step logging.
- * Logs the step at start, on success, and on failure, using logger utility.
- */
+// Retries user step on failure, logging status, and fails immediately if validation fails after attempt
 export async function runStep(
     stepName: string,
     fn: () => Promise<void>,
@@ -167,13 +149,18 @@ export async function runStep(
     );
 }
 
-
+// Only seeds database if existing form fields are missing (idempotency)
 export async function seedDbIfNeeded(): Promise<void> {
-  const existing = await getFormFields();
-  if (!existing || existing.length === 0) {
-    await insertFormFields(formFields);
-    if (process.env.DEBUG === "true") {
-      console.log("Database seeded with form fields.");
+  try {
+    const existing = await getFormFields();
+    if (!Array.isArray(existing) || existing.length === 0) {
+      await seed();
+      if (process.env.DEBUG === "true") {
+        console.log("Database seeded with form fields.");
+      }
     }
+  } catch (err) {
+    console.error("Error verifying or seeding the database:", err);
+    throw err;
   }
 }

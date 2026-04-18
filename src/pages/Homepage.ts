@@ -33,6 +33,7 @@ export class HomePage {
             });
     
         } catch {
+            // Ignore if cookie popup does not appear, as some tests/sessions may not trigger it
             if (process.env.DEBUG === "true") console.log("No cookie popup");
         }
     }

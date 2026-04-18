@@ -5,15 +5,14 @@ import { retry } from "../utils/retry";
 import { isDropdown, normalizeValue } from "../utils/field.utils";
 
 /**
- * Fills provided form fields using actions (type, select, click).
- * Throws error if a value was not set as expected.
+ * Throws if a value is not set as expected, to prevent silent test failures.
  */
 export async function fillFields(page: Page, fields: FormField[]) {
   for (const field of fields) {
     const { fieldName, selector, action, value } = field;
     await page.waitForSelector(selector);
     
-    // Await for Promise returned by isDropdown
+    // Detecting dropdown via action or best-guess helper
     const dropdown = action === "select" || (await isDropdown(fieldName, selector));
     if (dropdown) {
       if (typeof value !== "string") {
@@ -22,10 +21,9 @@ export async function fillFields(page: Page, fields: FormField[]) {
 
       const normValue = await normalizeValue(fieldName, value);
 
-      // Set dropdown value
       await retry(() => selectDropdown(page, selector, normValue));
 
-      // Check the dropdown value is set correctly
+      // Sanity check in case dropdown selection silently fails in the browser
       const actual = await page.$eval(
         selector,
         el => (el as HTMLSelectElement).value
@@ -40,10 +38,9 @@ export async function fillFields(page: Page, fields: FormField[]) {
 
       const normValue = await normalizeValue(fieldName, value);
 
-      // Type the input value
       await retry(() => typeText(page, selector, normValue));
 
-      // Check the input value is set correctly
+      // Defensive: browsers occasionally fail to set values as expected
       const actual = await page.$eval(
         selector,
         el => (el as HTMLInputElement).value
@@ -55,10 +52,8 @@ export async function fillFields(page: Page, fields: FormField[]) {
         throw new Error(`Field ${fieldName} not filled correctly`);
       }
     } else if (action === "click") {
-      // Click the element
       await clickElement(page, selector);
     } else {
-      // Unknown action, continue to next field
       continue;
     }
   }

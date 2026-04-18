@@ -2,7 +2,6 @@ import { Page } from "puppeteer";
 import { commonSelectors } from "../selectors/common.selectors";
 import { selectors as productSelectors } from "../selectors/product.selectors";
 
-
 export async function assertProductReady(page: Page) {
   await page.waitForSelector(productSelectors.productTitle, { visible: true });
   await page.waitForSelector(commonSelectors.bagButton, { visible: true });

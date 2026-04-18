@@ -9,15 +9,12 @@ import { assertProductReady } from "../validation/product.validation";
 import { selectors as productSelectors } from "../selectors/product.selectors";
 
 /**
- * ProductPage encapsulates product selection, variant choice, bagging, and assertions.
- * All actions leverage robust utility functions for DOM interaction.
+ * Encapsulates product interaction flows to reduce UI flakiness and centralize key assertions.
+ * Utility functions are used to avoid brittle direct DOM interaction.
  */
 export class ProductPage {
     constructor(private page: Page) { }
 
-    /**
-     * Navigates to the given product URL and ensures the product page is fully loaded.
-     */
     async open(productUrl: string): Promise<void> {
         await this.page.goto(productUrl, {
             waitUntil: "domcontentloaded",
@@ -26,21 +23,16 @@ export class ProductPage {
         await assertProductReady(this.page);
     }
 
-    /**
-     * Selects the first available color option if present.
-     * Uses robust DOM evaluation.
-     */
     async selectColor(): Promise<void> {
         await retry(async () => {
             await this.page.waitForSelector(productSelectors.colorButton, { visible: true, timeout: 10000 });
             const colorButtons = await this.page.$$(productSelectors.colorButton);
             if (!colorButtons.length) throw new Error("No colors");
 
-            // Use clickElement utility for robust interaction
-            // Always prefer using nth-of-type selectors for click
+            // Always prefer using nth-of-type selectors for click due to possible hidden or extra color options
             await clickElement(this.page, `${productSelectors.colorButton}:nth-of-type(1)`);
 
-            // Validate selection using evaluateOnSelector for reliability
+            // Ensures we do not proceed if DOM fails to report selected state after UI update
             const isSelected = await evaluateOnSelector<boolean>(
                 this.page,
                 `${productSelectors.colorButton}:nth-of-type(1)`,
@@ -50,10 +42,6 @@ export class ProductPage {
         });
     }
 
-    /**
-     * Selects the first preferred size option from the available ones, falling back to the first.
-     * Uses clickElement for robustness.
-     */
     async selectSize(): Promise<void> {
         await retry(async () => {
             await this.page.waitForSelector(productSelectors.sizeButton, {
@@ -76,12 +64,12 @@ export class ProductPage {
 
             const el = sizes[indexToClick];
 
-            // ✔️ scroll (חשוב!)
+            // Scrolling centers the element to avoid accidental misclicks on partially hidden options
             await this.page.evaluate(e => e.scrollIntoView({ block: "center" }), el);
 
             await el.click();
 
-            // ✔️ validation (קריטי)
+            // Fails fast if UI does not reflect selected state after clicking
             const isSelected = await this.page.evaluate(
                 e => e.classList.contains("selectedOption"),
                 el
@@ -91,10 +79,6 @@ export class ProductPage {
         });
     }
 
-    /**
-     * Adds the selected product variant to the shopping bag and waits for the bag count to increment.
-     * Uses robust clickElement and evaluateOnSelector.
-     */
     async addToBag(): Promise<void> {
         await retry(async () => {
           const { addToBagButton, xfoBagCount } = productSelectors;
@@ -113,6 +97,7 @@ export class ProductPage {
               )
             ) || 0;
           } catch {
+            // In some cases, bag count may not be present (first add); default to zero
             if (process.env.DEBUG === "true") console.log("[addToBag] Bag count not found, assuming 0");
           }
           const isDisabled = await this.page.$eval(
@@ -121,12 +106,14 @@ export class ProductPage {
           );
 
           if (isDisabled) {
+            // Fail immediately if button is unexpectedly disabled
             console.error("[addToBag] Add to bag button is disabled!");
             throw new Error("Add to bag button is disabled");
           }
 
           await clickElement(this.page, addToBagButton);
 
+          // Prevents continuation until bag count is visibly mutated in DOM, avoiding race conditions
           await this.page.waitForFunction(
             (selector, prev) => {
               const el = document.querySelector(selector);
@@ -147,16 +134,13 @@ export class ProductPage {
           ) || 0;
 
           if (after <= before) {
+            // Defensive: abort if increment not observed, even after click and wait
             console.error(`[addToBag] Error: Bag count did not increase (${before} → ${after})`);
             throw new Error(`Bag count did not increase (${before} → ${after})`);
           }
         });
       }
- 
 
-    /**
-     * Verifies that the product has been added and the shopping bag is not empty.
-     */
     async assertAddedToBag(): Promise<void> {
         await assertHasItems(this.page);
     }

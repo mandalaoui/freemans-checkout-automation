@@ -1,7 +1,6 @@
 import { Page } from "puppeteer";
 import {
     setCheckboxOrRadio,
-    evaluateOnSelector,
 } from "../utils/actions.utils";
 import { retry } from "../utils/retry";
 import { FormField } from "../types/form.types";
@@ -10,14 +9,13 @@ import { selectors as paymentSelectors } from "../selectors/payment.selectors";
 import { commonSelectors } from "../selectors/common.selectors";
 
 /**
- * PaymentPage encapsulates payment-related steps: selecting payment type and filling payment details.
- * All actions leverage robust utility functions for DOM interaction.
+ * Encapsulates payment steps to ensure resilient, reliable automation of the payment process.
  */
 export class PaymentPage {
     constructor(private page: Page) { }
 
     /**
-     * Select "Pay Now" as the payment mode using robust utilities, then wait for card details to be visible.
+     * Ensures "Pay Now" is actually selected—guards against flakiness in UI status indicators.
      */
     async selectPayNow(): Promise<void> {
         await this.page.waitForSelector(commonSelectors.confirmPayContainer, {
@@ -29,7 +27,6 @@ export class PaymentPage {
             timeout: 15000,
         });
 
-        // Use setCheckboxOrRadio utility to robustly select the "Pay Now" radio input
         await retry(async () => {
 
             await setCheckboxOrRadio(this.page, paymentSelectors.paymentPayNowInput, true);
@@ -48,7 +45,6 @@ export class PaymentPage {
                 return wrapper?.classList.contains('checked');
             }, paymentSelectors.paymentPayNowInput);
 
-
             if (!checked) throw new Error("Pay Now radio input not selected");
 
             await this.page.waitForSelector(paymentSelectors.cardDetailsContainer, {
@@ -58,8 +54,7 @@ export class PaymentPage {
     }
 
     /**
-     * Fill in card/payment details using provided fields and assert purchase availability.
-     * Uses form utilities for reliable DOM input.
+     * Delegates filling and validation to form utility to avoid duplicating domain-specific field logic.
      */
     async fillPaymentDetails(fields: FormField[]): Promise<void> {
         await fillFields(this.page, fields);

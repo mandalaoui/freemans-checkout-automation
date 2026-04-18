@@ -3,9 +3,6 @@
  * Throws the last encountered error if all attempts fail.
  */
 
-let currentStep = "";
-
-
 export async function retry<T>(
     fn: () => Promise<T>,
     attempts = 2,
@@ -25,5 +22,5 @@ export async function retry<T>(
         }
     }
 
-    throw new Error(`Step ${currentStep || "unknown"} failed: ${lastError && lastError.message ? lastError.message : lastError}`);
+    throw lastError instanceof Error ? lastError : new Error(`Retry failed: ${String(lastError)}`);
 }

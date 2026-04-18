@@ -2,7 +2,6 @@ import { Page } from "puppeteer";
 import {
     clickElement,
     selectDropdown,
-    evaluateOnSelector,
 } from "../utils/actions.utils";
 import { retry } from "../utils/retry";
 import { FormField } from "../types/form.types";
@@ -13,18 +12,14 @@ import { commonSelectors } from "../selectors/common.selectors";
 import { validationSelectors } from "../selectors/validation.selectors";
 
 /**
- * CheckoutPage encapsulates actions and verifications relevant to the guest checkout,
- * delivery, payment, and purchase application flows.
+ * Encapsulates guest checkout, delivery, payment, and application flows
+ * to reduce flakiness and provide a single source of assertion for test reliability.
  *
- * NOTE: Actions use utility methods from actions.utils.ts for element interaction,
- * DOM evaluation, and robust input handling.
+ * Utility methods are used here for robust element interaction and DOM querying.
  */
 export class CheckoutPage {
     constructor(private page: Page) { }
 
-    /**
-     * Click the guest checkout button, wait for the first name input to appear.
-     */
     async startGuestCheckout(): Promise<void> {
         await clickElement(this.page, checkoutSelectors.guestCheckoutButton, {
             waitForNavigation: true,
@@ -35,12 +30,9 @@ export class CheckoutPage {
         });
     }
 
-    /**
-     * Fill the initial address/customer details form and check for visible errors.
-     */
     async fillInitialAddressForm(): Promise<void> {
         const allFields: FormField[] = await getFormFields();
-        // Use the canonical set of "initial" address detail field names.
+        // Only fill the expected "initial" address details to avoid test brittleness on field additions
         const initialFieldNames = [
             "title",
             "firstName",
@@ -57,7 +49,7 @@ export class CheckoutPage {
         );
         await fillFields(this.page, initialFields);
 
-        // Use evaluateOnSelector (from utils) for safer DOM querying.
+        // Only visible/active error messages should fail subsequent steps
         const visibleErrors = await this.page.$$eval(
             validationSelectors.formError,
             (els) =>
@@ -79,9 +71,6 @@ export class CheckoutPage {
         }
     }
 
-    /**
-     * Click "Find Address" button and ensure address select options are loaded.
-     */
     async clickFindAddress(): Promise<void> {
         await this.page.waitForSelector(checkoutSelectors.findAddressButton, {
             visible: true,
@@ -95,7 +84,7 @@ export class CheckoutPage {
             timeout: 10000,
         });
 
-        // Use evaluateOnSelector for robust querying
+        // Fail early if address search yields no selectable results (prevents hiding flakiness)
         const optionsCount = await this.page.$$eval(
             `${checkoutSelectors.addressSelect} option`,
             (opts) => opts.length
@@ -105,15 +94,12 @@ export class CheckoutPage {
         }
     }
 
-    /**
-     * Select the first valid address option from the dropdown after lookup.
-     */
     async selectAddressFromResults(): Promise<void> {
         await this.page.waitForSelector(checkoutSelectors.addressSelect, {
             timeout: 10000,
         });
 
-        // Get all valid (non-placeholder) option values
+        // Filter out placeholder options to avoid selecting invalid entries
         const options: string[] = await this.page.$$eval(
             `${checkoutSelectors.addressSelect} option`,
             (opts) =>
@@ -138,6 +124,7 @@ export class CheckoutPage {
             selectDropdown(this.page, checkoutSelectors.addressSelect, valueToSelect)
         );
 
+        // Prevents proceeding before dropdown selection is actually completed in the DOM
         await this.page.waitForFunction(
             (selector, expected) => {
                 const el = document.querySelector(selector) as HTMLSelectElement;
@@ -148,15 +135,13 @@ export class CheckoutPage {
             valueToSelect
         );
 
+        // Ensure summary is populated (protects against async rendering issues)
         await this.page.waitForFunction((selector) => {
             const el = document.querySelector(selector);
             return el && el.textContent && el.textContent.trim().length > 0;
         }, {}, checkoutSelectors.addressSummary);
     }
 
-    /**
-     * Fill post-address form fields and ensure validations (email/pass confirm).
-     */
     async fillPostAddressForm(): Promise<void> {
         const allFields: FormField[] = await getFormFields();
         const postFieldNames = [
@@ -169,7 +154,7 @@ export class CheckoutPage {
             postFieldNames.includes(f.fieldName)
         );
 
-        // Validate that emails and passwords match.
+        // Prevents sending mismatched credentials, which would invalidate the test of positive flows
         const emailField = postFields.find((f) => f.fieldName === "email");
         const confirmEmailField = postFields.find(
             (f) => f.fieldName === "confirmEmail"
@@ -197,9 +182,6 @@ export class CheckoutPage {
         await fillFields(this.page, postFields);
     }
 
-    /**
-     * Click the "Continue" or "Apply" button and wait for the next form container.
-     */
     async clickContinue(): Promise<void> {
         await this.page.waitForSelector(commonSelectors.applyButton, {
             visible: true,
@@ -207,6 +189,7 @@ export class CheckoutPage {
 
         await clickElement(this.page, commonSelectors.applyButton);
 
+        // Protects against advancing in the flow until the next UI state is ready
         await this.page.waitForSelector(commonSelectors.deliveryContainerWrapper, {
             timeout: 15000,
         });

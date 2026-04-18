@@ -2,14 +2,13 @@ import { Page } from "puppeteer";
 import {
     clickElement,
 } from "../utils/actions.utils";
-import { retry } from "../utils/retry";
 import { assertOpen } from "../validation/bag.validation";
 import { assertCheckoutLoaded } from "../validation/checkout.validation";
 import { selectors as bagSelectors } from "../selectors/bag.selectors";
 import { commonSelectors } from "../selectors/common.selectors";
 
 /**
- * BagPage encapsulates actions related to viewing and beginning checkout from the cart/bag.
+ * Encapsulates bag actions to guard against flakiness throughout checkout.
  */
 export class BagPage {
     private page: Page;
@@ -19,7 +18,7 @@ export class BagPage {
     }
 
     /**
-     * Opens the bag/cart overlay or page and ensures the checkout interface is ready.
+     * Attempts to open the bag only if not already open, preventing unnecessary UI interaction.
      */
     async open(): Promise<void> {
         const isAlreadyOpen = await this.page.$(bagSelectors.checkoutButton);
@@ -40,7 +39,7 @@ export class BagPage {
     }
 
     /**
-     * Proceeds from the bag to the checkout step; expects appropriate identifier to load.
+     * After clicking checkout, ensures that the checkout step loaded properly by explicit assertion.
      */
     async goToCheckout(): Promise<void> {
         await clickElement(this.page, bagSelectors.checkoutButton);
