@@ -86,6 +86,33 @@ Running the script will execute:
 
 ---
 
+```mermaid
+flowchart TD
+    A[Open Homepage] --> B[Accept Cookies]
+    B --> C[Go to Product Page]
+    C --> D[Select Color]
+    D --> E[Select Size]
+    E --> F[Add to Bag]
+    F --> G[Open Bag]
+    G --> H[Start Checkout]
+    H --> I[Continue as Guest]
+    I --> J[Fill Personal Details]
+    J --> K[Search Address]
+    K --> L[Select Address]
+    L --> M[Fill Account Details]
+    M --> N[Proceed Through Delivery]
+    N --> O[Select Payment Option]
+    O --> P[Enter Payment Details]
+    P --> Q[Verify Checkout Ready]
+    Q --> R[End]
+```
+
+```
+**Happy Flow:** above is a Mermaid diagram showing each automation step.
+
+
+---
+
 ## 📁 Project Structure
 
 ```text
