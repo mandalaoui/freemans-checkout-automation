@@ -104,18 +104,16 @@ flowchart TD
     N --> O[Select Payment Option]
     O --> P[Enter Payment Details]
     P --> Q[Verify Checkout Ready]
-    Q --> R[End]
-```
+    Q --> R[Complete Checkout]
 
 ```
-**Happy Flow:** above is a Mermaid diagram showing each automation step.
-
+**Happy Flow:** Mermaid diagram above shows each automation step.
 
 ---
 
 ## 📁 Project Structure
 
-```text
+```
 src/
   browser/          → Browser setup
   pages/            → Page Object Model classes
